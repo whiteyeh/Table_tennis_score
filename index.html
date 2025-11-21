@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>桌球計分器（雙/單打模式）</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 設置字體為 Inter，並使用深色模式 -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* 發球隊伍的發光效果 - 根據隊伍顏色設定 */
+        .server-glow-team1 {
+            /* 隊伍 A (紅色) 發光 */
+            box-shadow: 0 0 20px rgba(248, 113, 113, 0.7); 
+            transition: box-shadow 0.3s ease-in-out;
+        }
+        .server-glow-team2 {
+            box-shadow: 0 0 20px rgba(96, 165, 250, 0.7); /* 隊伍 B (藍色) 發光 */
+            transition: box-shadow 0.3s ease-in-out;
+        }
+        /* 模式選擇器按鈕樣式 */
+        .mode-button, .match-format-button {
+            transition: all 0.2s;
+        }
+        .mode-button.active, .match-format-button.active {
+            background-color: #10b981; /* Emerald 500 */
+            color: #1f2937; /* Gray 800 */
+            font-weight: bold;
+        }
+        /* 禁用按鈕的樣式 */
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        /* 中央訊息的顏色 */
+        .general-message {
+            color: #4ade80; /* Green 400 */
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center p-4">
+
+    <!-- 主容器 -->
+    <div id="app" class="w-full max-w-3xl bg-gray-800 p-8 rounded-xl shadow-2xl space-y-8">
+        <h1 id="main-title" class="text-4xl font-bold text-center text-green-400">桌球比分板</h1>
+
+        <!-- 模式選擇器 (單打/雙打) -->
+        <div class="flex justify-center space-x-2 bg-gray-700 p-2 rounded-lg">
+            <button id="mode-singles" onclick="setGameMode('SINGLES')" class="mode-button flex-1 py-2 px-4 rounded-md bg-gray-600 hover:bg-gray-500">
+                單打
+            </button>
+            <button id="mode-doubles" onclick="setGameMode('DOUBLES')" class="mode-button flex-1 py-2 px-4 rounded-md bg-gray-600 hover:bg-gray-500">
+                雙打
+            </button>
+        </div>
+        
+        <!-- 總局數選擇器 -->
+        <div class="text-center mt-4">
+            <p class="text-md font-medium text-gray-400 mb-2">選擇比賽局制</p>
+            <div class="flex justify-center space-x-2 bg-gray-700 p-2 rounded-lg">
+                <button id="format-3" onclick="setMatchFormat(3)" class="match-format-button flex-1 py-2 px-4 rounded-md bg-gray-600 hover:bg-gray-500">
+                    三局兩勝
+                </button>
+                <button id="format-5" onclick="setMatchFormat(5)" class="match-format-button flex-1 py-2 px-4 rounded-md bg-gray-600 hover:bg-gray-500">
+                    五局三勝
+                </button>
+            </div>
+        </div>
+
+        <!-- 局數統計和歷史比分 -->
+        <div class="text-center mb-6">
+            <p id="set-format-text" class="text-lg font-semibold text-gray-400">總局數 (三局兩勝)</p>
+            <div id="set-scores" class="text-5xl font-extrabold text-white space-x-4">
+                <span id="set-score-1" class="text-red-400">0</span>
+                <span class="text-gray-500">-</span>
+                <span id="set-score-2" class="text-blue-300">0</span>
+            </div>
+            
+            <!-- 單局比分歷史顯示區 -->
+            <div id="set-history-container" class="mt-4 text-sm bg-gray-700/50 p-3 rounded-lg mx-auto max-w-md">
+                <p class="font-semibold mb-2 text-gray-300 border-b border-gray-600 pb-1">單局比分歷史 (紅/藍)</p>
+                <!-- 實際比分記錄會注入到這裡 -->
+                <div id="set-history" class="flex justify-center flex-wrap gap-x-3 gap-y-1 min-h-[1.5rem]">
+                    <span id="history-placeholder" class="text-gray-500">尚無已完成局數</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 比分顯示區 -->
+        <div class="flex justify-around text-center space-x-4">
+            
+            <!-- A 隊/玩家卡片 -->
+            <div id="team1-card" class="player-card flex-1 p-6 rounded-lg bg-gray-700 transition duration-300">
+                <h2 id="team1-name" class="text-2xl font-bold mb-2 text-red-400">玩家 A</h2>
+                <p id="team1-players" class="text-sm text-gray-400 mb-4 h-5">P1</p>
+                <p id="score-1" class="text-8xl font-extrabold text-white">0</p>
+                <button onclick="addPoint(0)" class="mt-6 w-full py-3 bg-red-600 hover:bg-red-700 transition duration-200 rounded-lg font-bold text-lg shadow-md hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-red-500/50">
+                    玩家 A 得 1 分
+                </button>
+            </div>
+
+            <!-- B 隊/玩家卡片 -->
+            <div id="team2-card" class="player-card flex-1 p-6 rounded-lg bg-gray-700 transition duration-300">
+                <h2 id="team2-name" class="text-2xl font-bold mb-2 text-blue-300">玩家 B</h2>
+                <p id="team2-players" class="text-sm text-gray-400 mb-4 h-5">P3</p>
+                <p id="score-2" class="text-8xl font-extrabold text-white">0</p>
+                <button onclick="addPoint(1)" class="mt-6 w-full py-3 bg-blue-600 hover:bg-blue-700 transition duration-200 rounded-lg font-bold text-lg shadow-md hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-blue-500/50">
+                    玩家 B 得 1 分
+                </button>
+            </div>
+        </div>
+
+        <!-- 發球/接發球狀態區 (左右分欄顯示 + 中央箭頭) -->
+        <div class="flex justify-between items-center text-center space-x-4 pt-2">
+            <!-- A 隊狀態 (左) -->
+            <p id="server-status-a" class="flex-1 text-lg font-semibold text-red-400 min-h-[1.5rem]"></p>
+            <!-- 箭頭區 -->
+            <!-- 調整: 放大到 text-4xl，顏色改為 text-white 讓箭頭更突出 -->
+            <div id="server-direction" class="w-10 text-4xl font-extrabold text-white"></div>
+            <!-- B 隊狀態 (右) -->
+            <p id="server-status-b" class="flex-1 text-lg font-semibold text-blue-300 min-h-[1.5rem]"></p>
+        </div>
+        
+        <!-- 遊戲訊息與控制區 -->
+        <div class="space-y-4 pt-1">
+            <!-- 總體遊戲狀態訊息 (如 Deuce, Game Over) -->
+            <p id="game-message" class="text-center text-xl font-bold general-message min-h-[1.5rem]"></p>
+            
+            <div class="flex justify-center space-x-4">
+                <!-- 回上一步按鈕 -->
+                <button onclick="undoPoint()" id="undo-button" disabled class="py-2 px-6 bg-purple-600 hover:bg-purple-700 transition duration-200 rounded-lg font-medium shadow-md focus:outline-none focus:ring-4 focus:ring-purple-500/50">
+                    ⏪ 回上一步
+                </button>
+                <button onclick="changeServerManually()" class="py-2 px-6 bg-yellow-600 hover:bg-yellow-700 transition duration-200 rounded-lg font-medium shadow-md focus:outline-none focus:ring-4 focus:ring-yellow-500/50">
+                    手動切換發球者
+                </button>
+                <button onclick="resetGame()" class="py-2 px-6 bg-gray-600 hover:bg-gray-500 transition duration-200 rounded-lg font-medium shadow-md focus:outline-none focus:ring-4 focus:ring-gray-500/50">
+                    重置新局
+                </button>
+            </div>
+        </div>
+        
+    </div>
+
+    <!-- JavaScript 遊戲邏輯 -->
+    <script>
+        // 模式常數
+        const MODE_SINGLES = 'SINGLES';
+        const MODE_DOUBLES = 'DOUBLES';
+
+        // 遊戲狀態變數
+        let scores = [0, 0]; // [A 隊, B 隊]
+        let serverIndex = 0; // 當前發球者在 currentServerSequence 中的索引
+        let gameOver = false; // 當前局是否結束
+        let gameMode = MODE_SINGLES; // 預設為單打 
+        
+        // 總局數和比賽狀態
+        let setScores = [0, 0]; // [A 隊局數, B 隊局數]
+        let matchOver = false; // 整個比賽是否結束
+        let BEST_OF_SETS = 3; // 預設三局 
+        let SETS_TO_WIN = 2;  // 預設兩勝 
+
+        // 單局比分歷史
+        let finishedSetScores = []; // 儲存已完成的每一局比分，例如 [[11, 8], [9, 11]]
+
+        // 計分歷史記錄
+        let history = []; 
+
+        // 模式特定的配置
+        let currentServerSequence = [];
+        
+        // 所有的發球序列配置
+        const CONFIG = {
+            [MODE_SINGLES]: {
+                title: '桌球單打比分板',
+                team1Name: '玩家 A',
+                team2Name: '玩家 B',
+                team1Players: 'P1',
+                team2Players: 'P3',
+                sequence: [
+                    { player: 0, team: 0, name: 'P1 (玩家 A)' },
+                    { player: 1, team: 1, name: 'P3 (玩家 B)' }
+                ],
+                sequenceLength: 2 
+            },
+            [MODE_DOUBLES]: {
+                title: '桌球雙打比分板',
+                team1Name: 'A 隊',
+                team2Name: 'B 隊',
+                team1Players: 'P1 / P2',
+                team2Players: 'P3 / P4',
+                sequence: [
+                    { player: 0, team: 0, name: 'P1 (A 隊)' }, 
+                    { player: 2, team: 1, name: 'P3 (B 隊)' }, 
+                    { player: 1, team: 0, name: 'P2 (A 隊)' }, 
+                    { player: 3, team: 1, name: 'P4 (B 隊)' }  
+                ],
+                sequenceLength: 4 
+            }
+        };
+
+
+        // DOM 元素參考
+        const scoreDisplays = [
+            document.getElementById('score-1'),
+            document.getElementById('score-2')
+        ];
+        const setScoreDisplays = [ 
+            document.getElementById('set-score-1'),
+            document.getElementById('set-score-2')
+        ];
+        const teamCards = [
+            document.getElementById('team1-card'),
+            document.getElementById('team2-card')
+        ];
+        const teamNamesDisplay = [
+            document.getElementById('team1-name'),
+            document.getElementById('team2-name')
+        ];
+        const teamPlayersDisplay = [
+            document.getElementById('team1-players'),
+            document.getElementById('team2-players')
+        ];
+        const pointButtons = document.querySelectorAll('button[onclick^="addPoint"]');
+        const undoButton = document.getElementById('undo-button'); 
+        const gameMessage = document.getElementById('game-message');
+        const mainTitle = document.getElementById('main-title');
+        const setFormatText = document.getElementById('set-format-text'); 
+        const modeButtons = {
+            [MODE_SINGLES]: document.getElementById('mode-singles'),
+            [MODE_DOUBLES]: document.getElementById('mode-doubles')
+        };
+        const matchFormatButtons = { 
+            3: document.getElementById('format-3'),
+            5: document.getElementById('format-5')
+        };
+        const setHistoryDisplay = document.getElementById('set-history');
+        const historyPlaceholder = document.getElementById('history-placeholder');
+        // 新增的狀態顯示元素
+        const serverStatusA = document.getElementById('server-status-a');
+        const serverStatusB = document.getElementById('server-status-b');
+        const serverDirection = document.getElementById('server-direction'); // <--- 新增的箭頭元素
+        
+        /**
+         * 取得當前接發球者的名稱
+         * 在發球序列中找到緊跟在發球隊伍之後的第一個接發球隊伍的玩家。
+         * @returns {string} 接發球者的完整名稱 (例如 'P3 (玩家 B)')
+         */
+        function getReceiverInfo() {
+            if (currentServerSequence.length === 0) return '對手';
+
+            const serverInfo = currentServerSequence[serverIndex];
+            const servingTeam = serverInfo.team;
+            const receivingTeam = (servingTeam + 1) % 2; // 0 -> 1, 1 -> 0
+            
+            let receiverPlayer = '';
+
+            // 從伺服器索引的下一位開始，循環檢查序列，直到找到屬於接發球隊伍的玩家
+            let checkIndex = serverIndex;
+            let foundReceiver = false;
+            
+            for (let i = 1; i <= currentServerSequence.length; i++) {
+                checkIndex = (serverIndex + i) % currentServerSequence.length;
+                const potentialReceiver = currentServerSequence[checkIndex];
+                
+                // 找到第一個屬於接發球隊伍的玩家
+                if (potentialReceiver.team === receivingTeam) {
+                    receiverPlayer = potentialReceiver.name;
+                    foundReceiver = true;
+                    break; 
+                }
+            }
+            
+            if (!foundReceiver) {
+                // 如果沒有找到，返回隊伍名稱 (作為備用)
+                receiverPlayer = receivingTeam === 0 ? CONFIG[gameMode].team1Name : CONFIG[gameMode].team2Name;
+            }
+
+            return receiverPlayer;
+        }
+
+        /**
+         * 渲染發球與接發球狀態訊息到左右兩側
+         */
+        function renderServerStatus() {
+            if (matchOver || gameOver) {
+                serverStatusA.textContent = '';
+                serverStatusB.textContent = '';
+                serverDirection.textContent = ''; // 清除箭頭
+                return;
+            }
+
+            const serverInfo = currentServerSequence[serverIndex];
+            const serverName = serverInfo.name.split(' ')[0]; // 只需要玩家代號 (P1, P2...)
+            const servingTeam = serverInfo.team;
+            const receiverName = getReceiverInfo().split(' ')[0]; 
+
+            // 清除現有的樣式
+            // Reset to base classes
+            serverStatusA.className = 'flex-1 text-lg font-semibold min-h-[1.5rem]';
+            serverStatusB.className = 'flex-1 text-lg font-semibold min-h-[1.5rem]';
+
+            // Define team colors and emphasis class for server
+            const teamAColor = 'text-red-400';
+            const teamBColor = 'text-blue-300';
+            const serverEmphasis = 'font-bold'; // Use bold for the server's status
+
+            if (servingTeam === 0) {
+                // Team A (Left) is serving
+                serverStatusA.textContent = `🎯 ${serverName} 發球`;
+                serverStatusB.textContent = `↩️ ${receiverName} 接球`; // <--- 已更改為 '接球'
+                
+                // 設定箭頭：向右 (從 A 到 B)
+                serverDirection.textContent = '→'; 
+
+                // Server (Team A - Left): Red + Bold
+                serverStatusA.classList.add(teamAColor, serverEmphasis);
+                // Receiver (Team B - Right): Blue (Matching team color)
+                serverStatusB.classList.add(teamBColor); 
+
+            } else {
+                // Team B (Right) is serving
+                serverStatusA.textContent = `↩️ ${receiverName} 接球`; // <--- 已更改為 '接球'
+                serverStatusB.textContent = `🎯 ${serverName} 發球`;
+                
+                // 設定箭頭：向左 (從 B 到 A)
+                serverDirection.textContent = '←';
+
+                // Receiver (Team A - Left): Red (Matching team color)
+                serverStatusA.classList.add(teamAColor); 
+                // Server (Team B - Right): Blue + Bold
+                serverStatusB.classList.add(teamBColor, serverEmphasis); 
+            }
+        }
+
+
+        /**
+         * 根據目前完成的局數，渲染單局比分歷史
+         */
+        function renderSetHistory() {
+            setHistoryDisplay.innerHTML = ''; // 清除舊的歷史記錄
+
+            if (finishedSetScores.length === 0) {
+                setHistoryDisplay.innerHTML = '<span class="text-gray-500" id="history-placeholder">尚無已完成局數</span>';
+                return;
+            }
+            
+            finishedSetScores.forEach((setScore, index) => {
+                const setDiv = document.createElement('div');
+                setDiv.className = 'py-0.5 px-2 rounded text-xs font-mono bg-gray-600 shadow-sm';
+                
+                // 根據比分決定勝者的顏色
+                let teamAClass = setScore[0] > setScore[1] ? 'text-red-400 font-bold' : 'text-white';
+                let teamBClass = setScore[1] > setScore[0] ? 'text-blue-300 font-bold' : 'text-white';
+
+                setDiv.innerHTML = `
+                    <span class="text-gray-400 mr-1">局${index + 1}:</span>
+                    <span class="${teamAClass}">${setScore[0]}</span>
+                    <span class="text-gray-500">-</span>
+                    <span class="${teamBClass}">${setScore[1]}</span>
+                `;
+                setHistoryDisplay.appendChild(setDiv);
+            });
+        }
+
+
+        /**
+         * 設定總局數格式 (三局兩勝或五局兩勝)
+         * @param {number} sets - 3 或 5
+         */
+        function setMatchFormat(sets) {
+            if (sets !== 3 && sets !== 5) return;
+
+            BEST_OF_SETS = sets;
+            SETS_TO_WIN = Math.ceil(BEST_OF_SETS / 2);
+
+            // 更新按鈕樣式
+            matchFormatButtons[3].classList.remove('active', 'bg-emerald-500', 'text-gray-800');
+            matchFormatButtons[5].classList.remove('active', 'bg-emerald-500', 'text-gray-800');
+            matchFormatButtons[sets].classList.add('active', 'bg-emerald-500', 'text-gray-800');
+            
+            // 更新局數文字描述
+            const formatText = sets === 3 ? '三局兩勝' : '五局三勝';
+            setFormatText.textContent = `總局數 (${formatText})`;
+
+            // 清空單局比分歷史
+            finishedSetScores = [];
+
+            // 完全重置比賽
+            setScores = [0, 0];
+            matchOver = false;
+            resetGame(false); // 重置遊戲並更新 UI
+        }
+
+        /**
+         * 根據選擇的模式設定遊戲配置並重置
+         * @param {string} mode - 'SINGLES' 或 'DOUBLES'
+         */
+        function setGameMode(mode) {
+            gameMode = mode;
+            const config = CONFIG[gameMode];
+
+            // 更新模式按鈕樣式
+            modeButtons[MODE_SINGLES].classList.remove('active', 'bg-emerald-500', 'text-gray-800');
+            modeButtons[MODE_DOUBLES].classList.remove('active', 'bg-emerald-500', 'text-gray-800');
+            modeButtons[gameMode].classList.add('active', 'bg-emerald-500', 'text-gray-800');
+
+            // 設置文字
+            mainTitle.textContent = config.title;
+            teamNamesDisplay[0].textContent = config.team1Name;
+            teamNamesDisplay[1].textContent = config.team2Name;
+            teamPlayersDisplay[0].textContent = config.team1Players;
+            teamPlayersDisplay[1].textContent = config.team2Players;
+            pointButtons[0].textContent = `${config.team1Name} 得 1 分`;
+            pointButtons[1].textContent = `${config.team2Name} 得 1 分`;
+
+            currentServerSequence = config.sequence;
+            
+            // 完全重置比賽，保留當前的 BEST_OF_SETS 設定
+            setScores = [0, 0];
+            matchOver = false;
+            finishedSetScores = []; // 切換模式時也應清空比分歷史
+
+            resetGame(false); 
+
+            // 確保總局數格式的標籤和按鈕狀態是最新的 (BEST_OF_SETS 在此處不變)
+            const formatText = BEST_OF_SETS === 3 ? '三局兩勝' : '五局三勝';
+            setFormatText.textContent = `總局數 (${formatText})`;
+            matchFormatButtons[3].classList.remove('active', 'bg-emerald-500', 'text-gray-800');
+            matchFormatButtons[5].classList.remove('active', 'bg-emerald-500', 'text-gray-800');
+            matchFormatButtons[BEST_OF_SETS].classList.add('active', 'bg-emerald-500', 'text-gray-800');
+        }
+
+
+        /**
+         * 檢查是否達到局點或勝利條件
+         * @returns {boolean} 如果比賽或本局結束，返回 true
+         */
+        function checkWinCondition() {
+            const p1 = scores[0];
+            const p2 = scores[1];
+            
+            // 1. 如果比賽已經結束，只顯示比賽勝利訊息
+            if (matchOver) {
+                const matchWinner = setScores[0] > setScores[1] ? CONFIG[gameMode].team1Name : CONFIG[gameMode].team2Name;
+                gameMessage.textContent = `🎉 比賽結束！${matchWinner} 以 ${setScores[0]} - ${setScores[1]} 獲勝！`;
+                pointButtons.forEach(btn => btn.disabled = true);
+                return true;
+            }
+            
+            // 2. 如果本局已經結束，只顯示局數勝利訊息
+            if (gameOver) {
+                const winnerIndex = p1 > p2 ? 0 : 1;
+                const winner = winnerIndex === 0 ? CONFIG[gameMode].team1Name : CONFIG[gameMode].team2Name;
+                gameMessage.textContent = `✅ 局數結束！ ${winner} 拿下此局！請點擊 "重置新局" 開始下一局。`;
+                pointButtons.forEach(btn => btn.disabled = true);
+                return true;
+            }
+
+            // 3. 正常計分邏輯
+            let message = '遊戲進行中...'; // 預設訊息
+            
+            if (p1 >= 11 || p2 >= 11) {
+                const diff = Math.abs(p1 - p2);
+                
+                if (diff >= 2) {
+                    // **局數獲勝條件**
+                    gameOver = true;
+                    const winnerIndex = p1 > p2 ? 0 : 1;
+                    
+                    // 紀錄本局比分
+                    finishedSetScores.push([...scores]); 
+                    
+                    // 更新總局數
+                    setScores[winnerIndex]++; 
+
+                    // 檢查是否比賽獲勝
+                    if (setScores[winnerIndex] >= SETS_TO_WIN) {
+                        matchOver = true;
+                        const matchWinner = winnerIndex === 0 ? CONFIG[gameMode].team1Name : CONFIG[gameMode].team2Name;
+                        message = `🎉 比賽結束！${matchWinner} 以 ${setScores[0]} - ${setScores[1]} 獲勝！`;
+                    } else {
+                        const winner = winnerIndex === 0 ? CONFIG[gameMode].team1Name : CONFIG[gameMode].team2Name;
+                        message = `✅ 局數結束！ ${winner} 拿下此局！請點擊 "重置新局" 開始下一局。`;
+                    }
+                    
+                    // 禁用計分按鈕直到重置
+                    pointButtons.forEach(btn => btn.disabled = true);
+
+                } else if (p1 >= 10 && p2 >= 10) {
+                    // 平手 (Deuce) 狀態
+                    message = `🚨 平手 (Deuce)！`;
+                }
+            }
+            
+            gameMessage.textContent = message;
+            return matchOver || gameOver;
+        }
+
+        /**
+         * 根據目前比分決定是否切換發球者
+         */
+        function checkServerChange() {
+            const totalPoints = scores[0] + scores[1];
+            
+            // 檢查是否為 Deuce 狀態 (10-10 或之後)
+            const isDeuce = scores[0] >= 10 && scores[1] >= 10;
+            
+            // 決定換發球的間隔
+            const interval = isDeuce ? 1 : 2; 
+
+            if (totalPoints > 0 && totalPoints % interval === 0) {
+                serverIndex = (serverIndex + 1) % currentServerSequence.length;
+            }
+        }
+
+        /**
+         * 更新網頁上的顯示
+         */
+        function render() {
+            scoreDisplays[0].textContent = scores[0];
+            scoreDisplays[1].textContent = scores[1];
+            
+            // 更新局數顯示
+            setScoreDisplays[0].textContent = setScores[0];
+            setScoreDisplays[1].textContent = setScores[1];
+
+            // 取得目前發球者的隊伍 (0 或 1)
+            const currentServingTeam = currentServerSequence.length > 0 
+                ? currentServerSequence[serverIndex].team 
+                : 0; // 預設為隊伍 A/0
+
+            // 更新卡片發光效果 (指示發球隊伍)
+            teamCards[0].classList.remove('server-glow-team1', 'server-glow-team2');
+            teamCards[1].classList.remove('server-glow-team1', 'server-glow-team2');
+
+            if (currentServingTeam === 0) {
+                teamCards[0].classList.add('server-glow-team1');
+            } else if (currentServingTeam === 1) {
+                teamCards[1].classList.add('server-glow-team2');
+            }
+
+            // checkWinCondition 會更新 gameMessage
+            checkWinCondition(); 
+            
+            // 獨立渲染發球/接發球狀態
+            renderServerStatus();
+
+            // 更新回上一步按鈕的禁用狀態
+            undoButton.disabled = history.length === 0;
+
+            renderSetHistory(); // 渲染單局比分歷史
+        }
+
+        /**
+         * 為指定隊伍增加 1 分
+         * @param {number} team - 0 for Team A/Player A, 1 for Team B/Player B
+         */
+        function addPoint(team) {
+            if (matchOver || gameOver) return; // 比賽或本局結束後無法計分
+            
+            // 1. 儲存當前的完整遊戲狀態到歷史記錄中
+            history.push({ 
+                scores: [...scores], 
+                serverIndex: serverIndex, 
+                gameOver: gameOver,
+                setScores: [...setScores], 
+                matchOver: matchOver,
+                finishedSetScores: JSON.parse(JSON.stringify(finishedSetScores)) // 深拷貝
+            });
+
+            // 2. 更新分數和檢查發球權
+            scores[team]++;
+            checkServerChange();
+            render();
+        }
+
+        /**
+         * 回上一步
+         */
+        function undoPoint() {
+            if (history.length === 0) return;
+
+            // 1. 從歷史記錄中取出前一個狀態
+            const prevState = history.pop();
+            
+            // 2. 恢復遊戲狀態
+            scores = prevState.scores;
+            serverIndex = prevState.serverIndex;
+            gameOver = prevState.gameOver;
+            setScores = prevState.setScores;
+            matchOver = prevState.matchOver;
+            finishedSetScores = prevState.finishedSetScores; // 恢復歷史比分
+
+            // 3. 根據狀態重新啟用/禁用按鈕
+            pointButtons.forEach(btn => btn.disabled = matchOver || gameOver);
+
+            gameMessage.textContent = '⏪ 已還原上一步。';
+            render();
+        }
+        
+        /**
+         * 手動切換發球者
+         */
+        function changeServerManually() {
+            if (matchOver || gameOver) return; // 比賽或本局結束後不能手動切換發球者
+
+            // 手動切換也應當記錄到歷史中，以便可以還原
+            history.push({ 
+                scores: [...scores], 
+                serverIndex: serverIndex, 
+                gameOver: gameOver,
+                setScores: [...setScores], 
+                matchOver: matchOver,
+                finishedSetScores: JSON.parse(JSON.stringify(finishedSetScores))
+            });
+
+            serverIndex = (serverIndex + 1) % currentServerSequence.length;
+            gameMessage.textContent = `手動切換發球者完成。`;
+            render();
+        }
+
+        /**
+         * 重置所有狀態並開始新的一局或新的一場比賽
+         * @param {boolean} [showMessage=true] - 是否顯示歡迎訊息
+         */
+        function resetGame(showMessage = true) {
+            
+            // 【修正】確保 serverIndex 在使用前被重設為 0，避免切換模式時索引超出邊界。
+            serverIndex = 0; 
+
+            const formatText = BEST_OF_SETS === 3 ? '三局兩勝' : '五局三勝';
+            const serverName = currentServerSequence.length > 0 ? currentServerSequence[serverIndex].name : '發球者';
+            
+            if (matchOver) {
+                // 比賽結束，進行完全重置 (新比賽)
+                setScores = [0, 0];
+                matchOver = false;
+                finishedSetScores = []; // 清除單局歷史
+                if (showMessage) gameMessage.textContent = `🏆 全局比分已重置 (${formatText})。開始新一場比賽。`;
+            } else if (gameOver) {
+                // 本局結束，進行局間重置 (下一局)
+                if (showMessage) {
+                    gameMessage.textContent = `🎉 開始下一局！`;
+                }
+            }
+            
+            scores = [0, 0];
+            // serverIndex 已經在上方重置
+            gameOver = false;
+            history = []; // 重置時清除歷史記錄
+
+            // 重新啟用按鈕，除非比賽還沒結束
+            if (!matchOver) {
+                pointButtons.forEach(btn => btn.disabled = false);
+            }
+            
+            // 如果是首次載入，或者 setGameMode 呼叫，不顯示訊息
+            if (showMessage && !matchOver && !gameOver) {
+                 gameMessage.textContent = `🎉 新的一局開始了！`;
+            } else if (!showMessage && !matchOver) {
+                gameMessage.textContent = '';
+            }
+            
+            render();
+        }
+
+        // 首次載入時：設定預設模式（單打）和三局兩勝制並初始化遊戲
+        window.onload = () => {
+            // 1. 設置遊戲模式為單打 (SINGLES)
+            setGameMode(MODE_SINGLES);
+            // 2. 設置局數格式為三局兩勝 (3)
+            setMatchFormat(3); 
+        };
+
+    </script>
+
+</body>
+</html>
