@@ -96,7 +96,7 @@
             <!-- A 隊/玩家卡片 -->
             <div id="team1-card" class="player-card flex-1 p-6 rounded-lg bg-gray-700 transition duration-300">
                 <h2 id="team1-name" class="text-2xl font-bold mb-2 text-red-400">玩家 A</h2>
-                <p id="team1-players" class="text-sm text-gray-400 mb-4 h-5">P1</p>
+                <p id="team1-players" class="text-sm text-gray-400 mb-4 h-5">A1</p>
                 <p id="score-1" class="text-8xl font-extrabold text-white">0</p>
                 <button onclick="addPoint(0)" class="mt-6 w-full py-3 bg-red-600 hover:bg-red-700 transition duration-200 rounded-lg font-bold text-lg shadow-md hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-red-500/50">
                     玩家 A 得 1 分
@@ -106,7 +106,7 @@
             <!-- B 隊/玩家卡片 -->
             <div id="team2-card" class="player-card flex-1 p-6 rounded-lg bg-gray-700 transition duration-300">
                 <h2 id="team2-name" class="text-2xl font-bold mb-2 text-blue-300">玩家 B</h2>
-                <p id="team2-players" class="text-sm text-gray-400 mb-4 h-5">P3</p>
+                <p id="team2-players" class="text-sm text-gray-400 mb-4 h-5">B1</p>
                 <p id="score-2" class="text-8xl font-extrabold text-white">0</p>
                 <button onclick="addPoint(1)" class="mt-6 w-full py-3 bg-blue-600 hover:bg-blue-700 transition duration-200 rounded-lg font-bold text-lg shadow-md hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-blue-500/50">
                     玩家 B 得 1 分
@@ -179,11 +179,11 @@
                 title: '桌球單打比分板',
                 team1Name: '玩家 A',
                 team2Name: '玩家 B',
-                team1Players: 'P1',
-                team2Players: 'P3',
+                team1Players: 'A1', // 2. 將P1改為A1
+                team2Players: 'B1', // 3. 將P3改為B1
                 sequence: [
-                    { player: 0, team: 0, name: 'P1 (玩家 A)' },
-                    { player: 1, team: 1, name: 'P3 (玩家 B)' }
+                    { player: 0, team: 0, name: 'A1 (玩家 A)' }, // 2. 將P1改為A1
+                    { player: 1, team: 1, name: 'B1 (玩家 B)' }  // 3. 將P3改為B1
                 ],
                 sequenceLength: 2 
             },
@@ -191,13 +191,13 @@
                 title: '桌球雙打比分板',
                 team1Name: 'A 隊',
                 team2Name: 'B 隊',
-                team1Players: 'P1 / P2',
-                team2Players: 'P3 / P4',
+                team1Players: 'A1 / A2', // 2. 將P1/P2改為A1/A2
+                team2Players: 'B1 / B2', // 3. 將P3/P4改為B1/B2
                 sequence: [
-                    { player: 0, team: 0, name: 'P1 (A 隊)' }, 
-                    { player: 2, team: 1, name: 'P3 (B 隊)' }, 
-                    { player: 1, team: 0, name: 'P2 (A 隊)' }, 
-                    { player: 3, team: 1, name: 'P4 (B 隊)' }  
+                    { player: 0, team: 0, name: 'A1 (A 隊)' }, // 2. 將P1改為A1
+                    { player: 2, team: 1, name: 'B1 (B 隊)' }, // 3. 將P3改為B1
+                    { player: 1, team: 0, name: 'A2 (A 隊)' }, // 2. 將P2改為A2
+                    { player: 3, team: 1, name: 'B2 (B 隊)' }  // 3. 將P4改為B2
                 ],
                 sequenceLength: 4 
             }
@@ -248,7 +248,7 @@
         /**
          * 取得當前接發球者的名稱
          * 在發球序列中找到緊跟在發球隊伍之後的第一個接發球隊伍的玩家。
-         * @returns {string} 接發球者的完整名稱 (例如 'P3 (玩家 B)')
+         * @returns {string} 接發球者的完整名稱 (例如 'B1 (玩家 B)')
          */
         function getReceiverInfo() {
             if (currentServerSequence.length === 0) return '對手';
@@ -295,7 +295,7 @@
             }
 
             const serverInfo = currentServerSequence[serverIndex];
-            const serverName = serverInfo.name.split(' ')[0]; // 只需要玩家代號 (P1, P2...)
+            const serverName = serverInfo.name.split(' ')[0]; // 只需要玩家代號 (A1, B1...)
             const servingTeam = serverInfo.team;
             const receiverName = getReceiverInfo().split(' ')[0]; 
 
@@ -312,7 +312,7 @@
             if (servingTeam === 0) {
                 // Team A (Left) is serving
                 serverStatusA.textContent = `🎯 ${serverName} 發球`;
-                serverStatusB.textContent = `↩️ ${receiverName} 接球`; // <--- 已更改為 '接球'
+                serverStatusB.textContent = `↩️ ${receiverName} 接球`; 
                 
                 // 設定箭頭：向右 (從 A 到 B)
                 serverDirection.textContent = '→'; 
@@ -324,7 +324,7 @@
 
             } else {
                 // Team B (Right) is serving
-                serverStatusA.textContent = `↩️ ${receiverName} 接球`; // <--- 已更改為 '接球'
+                serverStatusA.textContent = `↩️ ${receiverName} 接球`; 
                 serverStatusB.textContent = `🎯 ${serverName} 發球`;
                 
                 // 設定箭頭：向左 (從 B 到 A)
@@ -462,7 +462,7 @@
             }
 
             // 3. 正常計分邏輯
-            let message = '遊戲進行中...'; // 預設訊息
+            let message = '比賽進行中...'; // 1. 將'遊戲進行中...'改為'比賽進行中...'
             
             if (p1 >= 11 || p2 >= 11) {
                 const diff = Math.abs(p1 - p2);
