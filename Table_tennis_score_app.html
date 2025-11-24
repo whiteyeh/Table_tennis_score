@@ -44,8 +44,14 @@
 </head>
 <body class="bg-gray-900 text-white min-h-screen flex items-center justify-center p-4">
 
-    <!-- 主容器 -->
-    <div id="app" class="w-full max-w-3xl bg-gray-800 p-8 rounded-xl shadow-2xl space-y-8">
+    <!-- 主容器: 加入 relative 以便絕對定位版本號 -->
+    <div id="app" class="w-full max-w-3xl bg-gray-800 p-8 rounded-xl shadow-2xl space-y-8 relative">
+        
+        <!-- 版本號顯示 (絕對定位在右上角) -->
+        <span id="version-display" class="absolute top-4 right-8 text-sm font-medium text-gray-500 whitespace-nowrap">
+            ver:20251124_1
+        </span>
+
         <h1 id="main-title" class="text-4xl font-bold text-center text-green-400">桌球比分板</h1>
 
         <!-- 模式選擇器 (單打/雙打) -->
@@ -462,7 +468,7 @@
             }
 
             // 3. 正常計分邏輯
-            let message = '比賽進行中...'; // 1. 將'遊戲進行中...'改為'比賽進行中...'
+            let message = '比賽進行中...'; 
             
             if (p1 >= 11 || p2 >= 11) {
                 const diff = Math.abs(p1 - p2);
